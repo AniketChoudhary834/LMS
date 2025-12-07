@@ -90,19 +90,54 @@ export const saveQuizResultAPI = (data) => apiCall("/quiz/result", {
 export const getQuizResultsAPI = () => apiCall("/quiz/results");
 
 // Media APIs
-export const uploadMediaAPI = async (file) => {
-  const formData = new FormData();
-  formData.append("file", file);
-  
-  const token = localStorage.getItem("token");
-  const response = await fetch(`${API_URL}/media/upload`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`
-    },
-    body: formData
+export const uploadMediaAPI = async (file, onProgress) => {
+  return new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    
+    const token = localStorage.getItem("token");
+    const xhr = new XMLHttpRequest();
+    
+    // Track upload progress
+    xhr.upload.addEventListener("progress", (e) => {
+      if (e.lengthComputable && onProgress) {
+        const percentComplete = Math.round((e.loaded / e.total) * 100);
+        onProgress(percentComplete);
+      }
+    });
+    
+    // Handle completion
+    xhr.addEventListener("load", () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const response = JSON.parse(xhr.responseText);
+          resolve(response);
+        } catch (error) {
+          reject({ success: false, message: "Failed to parse response" });
+        }
+      } else {
+        try {
+          const error = JSON.parse(xhr.responseText);
+          reject(error);
+        } catch {
+          reject({ success: false, message: `Upload failed with status ${xhr.status}` });
+        }
+      }
+    });
+    
+    // Handle errors
+    xhr.addEventListener("error", () => {
+      reject({ success: false, message: "Network error during upload" });
+    });
+    
+    xhr.addEventListener("abort", () => {
+      reject({ success: false, message: "Upload aborted" });
+    });
+    
+    xhr.open("POST", `${API_URL}/media/upload`);
+    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    xhr.send(formData);
   });
-  return response.json();
 };
 
 

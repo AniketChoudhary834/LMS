@@ -23,6 +23,7 @@ export default function CreateCoursePage() {
   });
   const [uploading, setUploading] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState({});
+  const [uploadProgress, setUploadProgress] = useState({});
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -76,21 +77,49 @@ export default function CreateCoursePage() {
       return;
     }
 
-    setUploadingVideo({ ...uploadingVideo, [index]: true });
-    const result = await uploadMediaAPI(file);
-    if (result.success) {
-      const newCurriculum = [...formData.curriculum];
-      newCurriculum[index] = {
-        ...newCurriculum[index],
-        videoUrl: result.data.secure_url || result.data.url
-      };
-      setFormData({ ...formData, curriculum: newCurriculum });
-      setMessage("");
-    } else {
-      setMessage(result.message || "Failed to upload video");
+    // Use functional state updates to avoid race conditions
+    setUploadingVideo((prev) => ({ ...prev, [index]: true }));
+    setUploadProgress((prev) => ({ ...prev, [index]: 0 }));
+
+    try {
+      const result = await uploadMediaAPI(file, (progress) => {
+        // Update progress for this specific video index
+        setUploadProgress((prev) => ({ ...prev, [index]: progress }));
+      });
+
+      if (result.success) {
+        // Use functional state update to ensure we have the latest curriculum state
+        setFormData((prevFormData) => {
+          const newCurriculum = [...prevFormData.curriculum];
+          // Ensure the index still exists (in case curriculum was modified during upload)
+          if (newCurriculum[index]) {
+            newCurriculum[index] = {
+              ...newCurriculum[index],
+              videoUrl: result.data.secure_url || result.data.url
+            };
+          }
+          return { ...prevFormData, curriculum: newCurriculum };
+        });
+        setMessage("");
+      } else {
+        setMessage(result.message || "Failed to upload video");
+      }
+    } catch (error) {
+      setMessage(error.message || "Failed to upload video");
+    } finally {
+      // Use functional state updates to safely remove upload state
+      setUploadingVideo((prev) => {
+        const newState = { ...prev };
+        delete newState[index];
+        return newState;
+      });
+      setUploadProgress((prev) => {
+        const newState = { ...prev };
+        delete newState[index];
+        return newState;
+      });
+      e.target.value = ""; // Reset input
     }
-    setUploadingVideo({ ...uploadingVideo, [index]: false });
-    e.target.value = ""; // Reset input
   };
 
   const handleCurriculumChange = (index, field, value) => {
@@ -294,7 +323,29 @@ export default function CreateCoursePage() {
                           disabled={uploadingVideo[index]}
                         />
                         {uploadingVideo[index] && (
-                          <p className="mt-2 text-sm text-blue-600">Uploading video...</p>
+                          <div className="mt-2 flex items-center gap-2 text-blue-600">
+                            <svg
+                              className="animate-spin h-5 w-5 text-blue-600"
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                            >
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                              ></circle>
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                              ></path>
+                            </svg>
+                            <span className="text-sm font-medium">Uploading...</span>
+                          </div>
                         )}
                       </div>
                     )}
