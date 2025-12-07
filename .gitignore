@@ -1,0 +1,10 @@
+# Node dependencies
+server/node_modules/
+client/node_modules/
+
+# Environment variables
+server/.env
+
+# Server uploads (ignore files, keep folder)
+server/uploads/*
+!server/uploads/.gitkeep
