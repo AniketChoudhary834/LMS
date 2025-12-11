@@ -1,9 +1,9 @@
 const API_URL = "http://localhost:5000/api";
 
-// Simple fetch wrapper
+// fetch wrapper
 const apiCall = async (endpoint, options = {}) => {
   const token = localStorage.getItem("token");
-  
+
   const config = {
     headers: {
       "Content-Type": "application/json",
@@ -14,8 +14,27 @@ const apiCall = async (endpoint, options = {}) => {
 
   try {
     const response = await fetch(`${API_URL}${endpoint}`, config);
-    const data = await response.json();
-    return data;
+    let data = null;
+
+    try {
+      data = await response.json();
+    } catch {
+      // Non-JSON response
+      data = null;
+    }
+
+    if (!response.ok) {
+      const message = data?.message || `Request failed with status ${response.status}`;
+      return {
+        success: false,
+        status: response.status,
+        message,
+        data: data ?? undefined
+      };
+    }
+
+    // For successful responses, return parsed data (or a default success flag)
+    return data ?? { success: true };
   } catch (error) {
     return { success: false, message: error.message };
   }
@@ -90,54 +109,31 @@ export const saveQuizResultAPI = (data) => apiCall("/quiz/result", {
 export const getQuizResultsAPI = () => apiCall("/quiz/results");
 
 // Media APIs
-export const uploadMediaAPI = async (file, onProgress) => {
-  return new Promise((resolve, reject) => {
-    const formData = new FormData();
-    formData.append("file", file);
-    
-    const token = localStorage.getItem("token");
-    const xhr = new XMLHttpRequest();
-    
-    // Track upload progress
-    xhr.upload.addEventListener("progress", (e) => {
-      if (e.lengthComputable && onProgress) {
-        const percentComplete = Math.round((e.loaded / e.total) * 100);
-        onProgress(percentComplete);
-      }
-    });
-    
-    // Handle completion
-    xhr.addEventListener("load", () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          const response = JSON.parse(xhr.responseText);
-          resolve(response);
-        } catch (error) {
-          reject({ success: false, message: "Failed to parse response" });
-        }
-      } else {
-        try {
-          const error = JSON.parse(xhr.responseText);
-          reject(error);
-        } catch {
-          reject({ success: false, message: `Upload failed with status ${xhr.status}` });
-        }
-      }
-    });
-    
-    // Handle errors
-    xhr.addEventListener("error", () => {
-      reject({ success: false, message: "Network error during upload" });
-    });
-    
-    xhr.addEventListener("abort", () => {
-      reject({ success: false, message: "Upload aborted" });
-    });
-    
-    xhr.open("POST", `${API_URL}/media/upload`);
-    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-    xhr.send(formData);
+export const uploadMediaAPI = async (file) => {
+  const token = localStorage.getItem("token");
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(`${API_URL}/media/upload`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData
   });
+
+  if (!response.ok) {
+    try {
+      const error = await response.json();
+      throw error;
+    } catch {
+      throw { success: false, message: `Upload failed with status ${response.status}` };
+    }
+  }
+
+  try {
+    return await response.json();
+  } catch {
+    throw { success: false, message: "Failed to parse response" };
+  }
 };
 
 

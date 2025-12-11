@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { RouteGuard } from "./components/RouteGuard";
 import AuthPage from "./pages/AuthPage";
 import HomePage from "./pages/HomePage";
@@ -9,25 +9,31 @@ import MyCoursesPage from "./pages/MyCoursesPage";
 import QuizPage from "./pages/QuizPage";
 import InstructorDashboard from "./pages/InstructorDashboard";
 import CreateCoursePage from "./pages/CreateCoursePage";
+import { useAuth } from "./context/AuthContext";
 
 function App() {
+  const {user} = useAuth();
   return (
     <Routes>
-      <Route path="/auth" element={<AuthPage />} />
+      <Route path="/auth" element={user? <Navigate to='/' /> : <AuthPage />} />
       
-      <Route
+      {/* <Route
         path="/"
         element={
-          <RouteGuard requireAuth={true}>
+          <RouteGuard >
             <HomePage />
           </RouteGuard>
         }
+      /> */}
+      <Route
+        path="/"
+        element={ <HomePage /> }
       />
       
       <Route
         path="/courses"
         element={
-          <RouteGuard requireAuth={true}>
+          <RouteGuard >
             <CoursesPage />
           </RouteGuard>
         }
@@ -36,7 +42,7 @@ function App() {
       <Route
         path="/course/:id"
         element={
-          <RouteGuard requireAuth={true}>
+          <RouteGuard >
             <CourseDetailsPage />
           </RouteGuard>
         }
@@ -45,7 +51,7 @@ function App() {
       <Route
         path="/course-progress/:id"
         element={
-          <RouteGuard requireAuth={true}>
+          <RouteGuard >
             <CourseProgressPage />
           </RouteGuard>
         }
@@ -54,7 +60,7 @@ function App() {
       <Route
         path="/my-courses"
         element={
-          <RouteGuard requireAuth={true}>
+          <RouteGuard >
             <MyCoursesPage />
           </RouteGuard>
         }
@@ -63,7 +69,7 @@ function App() {
       <Route
         path="/quiz"
         element={
-          <RouteGuard requireAuth={true}>
+          <RouteGuard >
             <QuizPage />
           </RouteGuard>
         }
@@ -72,7 +78,7 @@ function App() {
       <Route
         path="/instructor"
         element={
-          <RouteGuard requireAuth={true} requireRole="instructor">
+          <RouteGuard  requireRole="instructor">
             <InstructorDashboard />
           </RouteGuard>
         }
@@ -81,7 +87,7 @@ function App() {
       <Route
         path="/instructor/create-course"
         element={
-          <RouteGuard requireAuth={true} requireRole="instructor">
+          <RouteGuard  requireRole="instructor">
             <CreateCoursePage />
           </RouteGuard>
         }
@@ -90,7 +96,7 @@ function App() {
       <Route
         path="/instructor/edit-course/:id"
         element={
-          <RouteGuard requireAuth={true} requireRole="instructor">
+          <RouteGuard  requireRole="instructor">
             <CreateCoursePage />
           </RouteGuard>
         }

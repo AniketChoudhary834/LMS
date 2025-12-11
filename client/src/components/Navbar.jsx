@@ -72,9 +72,6 @@ export default function Navbar() {
                     {getInitial(user.userName)}
                   </div>
                   {/* Username */}
-                  {/* <span className="text-gray-700 font-medium hidden sm:block">
-                    {user.userName}
-                  </span> */}
                   <div>
                     <p className="text-sm font-medium text-gray-900">{user.userName}</p>
                     <p className="text-xs text-gray-500 capitalize">{user.role}</p>

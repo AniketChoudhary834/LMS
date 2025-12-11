@@ -1,14 +1,18 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-export const RouteGuard = ({ children, requireAuth = true, requireRole = null }) => {
+export const RouteGuard = ({ children, requireRole = null }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
-  if (requireAuth && !user) {
+  // if (requireAuth && !user) {
+  //   return <Navigate to="/auth" />;
+  // }
+  
+  if (!user) {
     return <Navigate to="/auth" />;
   }
 
