@@ -1,19 +1,20 @@
 const multer = require("multer");
-const { uploadToCloudinary, deleteFromCloudinary } = require("../helpers/cloudinary");
-const fs = require("fs");
+const { uploadToCloudinaryBuffer, deleteFromCloudinary } = require("../helpers/cloudinary");
 
-// Configure multer with file size limit (1GB = 1073741824 bytes)
-const upload = multer({ 
-  dest: "uploads/",
+// Multer RAM storage
+const storage = multer.memoryStorage();
+
+// Configure multer
+const upload = multer({
+  storage,
   limits: {
-    fileSize: 1073741824 // 1GB in bytes
+    fileSize: 1073741824 // 1GB limit
   },
   fileFilter: (req, file, cb) => {
-    // Check if file is a video
-    if (file.mimetype.startsWith("video/")) {
+    if (file.mimetype.startsWith("video/") || file.mimetype.startsWith("image/") ) {
       cb(null, true);
     } else {
-      cb(null, true); // Allow other file types too (for images)
+      cb(null, false);
     }
   }
 });
@@ -31,39 +32,30 @@ exports.uploadFile = [
         return res.status(400).json({ success: false, message: "No file uploaded" });
       }
 
-      // Additional size check (in case multer limit doesn't catch it)
+      // Manual size check
       const maxSize = 1073741824; // 1GB
       if (req.file.size > maxSize) {
-        // Clean up uploaded file
-        if (fs.existsSync(req.file.path)) {
-          fs.unlinkSync(req.file.path);
-        }
-        return res.status(400).json({ 
-          success: false, 
-          message: "File size exceeds 1GB limit. Please upload a smaller file." 
+        return res.status(400).json({
+          success: false,
+          message: "File size exceeds 1GB limit. Please upload a smaller file."
         });
       }
 
-      const result = await uploadToCloudinary(req.file.path);
-      
-      // Clean up temporary file after upload
-      if (fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
-      
+      // Upload buffer to Cloudinary
+      const result = await uploadToCloudinaryBuffer(req.file.buffer, {
+        public_id: `${Date.now()}_${req.file.originalname.replace(/\s+/g, "_")}`
+      });
+
       res.json({ success: true, data: result });
+
     } catch (error) {
-      // Clean up temporary file on error
-      if (req.file && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
-      
       if (error.code === "LIMIT_FILE_SIZE") {
-        return res.status(400).json({ 
-          success: false, 
-          message: "File size exceeds 1GB limit. Please upload a smaller file." 
+        return res.status(400).json({
+          success: false,
+          message: "File size exceeds 1GB limit."
         });
       }
+
       res.status(500).json({ success: false, message: error.message });
     }
   }
@@ -75,11 +67,10 @@ exports.deleteFile = async (req, res) => {
     if (req.user.role !== "instructor") {
       return res.status(403).json({ success: false, message: "Access denied" });
     }
+
     await deleteFromCloudinary(req.params.id);
     res.json({ success: true, message: "File deleted" });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
-

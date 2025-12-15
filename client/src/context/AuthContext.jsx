@@ -20,13 +20,20 @@ export const AuthProvider = ({ children }) => {
       return;
     }
 
-    const result = await checkAuthAPI();
-    if (result.success) {
-      setUser(result.data.user);
-    } else {
+    try {
+      const result = await checkAuthAPI();
+      if (result.success) {
+        setUser(result.data.user);
+      } else {
+        localStorage.removeItem("token");
+      }
+      setLoading(false);
+      
+    } catch (error) {
+      
       localStorage.removeItem("token");
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const login = (token, userData) => {

@@ -6,29 +6,37 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-const uploadToCloudinary = async (filePath) => {
-  try {
-    const result = await cloudinary.uploader.upload(filePath, {
-      resource_type: "auto",
-      chunk_size: 6000000, // 6MB chunks for large video files
-      eager: [], // No eager transformations
-      eager_async: false
-    });
-    return result;
-  } catch (error) {
-    console.error("Cloudinary upload error:", error);
-    throw new Error("Error uploading to Cloudinary: " + error.message);
-  }
+// Upload BUFFER instead of file path
+const uploadToCloudinaryBuffer = (buffer, options = {}) => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        resource_type: "auto",
+        chunk_size: 6000000, // 6MB per chunk
+        eager: [],
+        eager_async: false,
+        ...options
+      },
+      (error, result) => {
+        if (error) {
+          console.error("Cloudinary upload error:", error);
+          reject(new Error("Error uploading to Cloudinary: " + error.message));
+        } else {
+          resolve(result);
+        }
+      }
+    );
+
+    uploadStream.end(buffer);
+  });
 };
 
 const deleteFromCloudinary = async (publicId) => {
   try {
-    await cloudinary.uploader.destroy(publicId);
+    await cloudinary.uploader.destroy(publicId, { resource_type: "video" });
   } catch (error) {
     throw new Error("Error deleting from Cloudinary");
   }
 };
 
-module.exports = { uploadToCloudinary, deleteFromCloudinary };
-
-
+module.exports = { uploadToCloudinaryBuffer, deleteFromCloudinary };

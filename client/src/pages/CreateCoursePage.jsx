@@ -274,6 +274,7 @@ export default function CreateCoursePage() {
               <button
                 onClick={() => setStep(2)}
                 className="w-full bg-blue-600 text-white py-3 rounded hover:bg-blue-700"
+                disabled={uploading}
               >
                 Next: Add Curriculum
               </button>
